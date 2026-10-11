@@ -73,10 +73,12 @@ def find_latest_prompt(prompts_dir: Path) -> dict:
 
 def build_caption(prompt_data: dict, video_filename: str) -> str:
     """Monta a legenda formatada em HTML para o Telegram."""
-    titulo = html.escape(prompt_data.get("titulo", "Novo Vídeo Gerado por IA"))
-    descricao = html.escape(prompt_data.get("descricao_pt", ""))
+    titulo = html.escape(prompt_data.get("titulo", "Novo Vídeo de Humor Gerado por IA"))
+    legenda = html.escape(prompt_data.get("legenda_facebook") or prompt_data.get("descricao_pt", ""))
+    conceito = html.escape(prompt_data.get("conceito", ""))
     prompt_visual = html.escape(prompt_data.get("prompt_visual", ""))
-    categoria = html.escape(prompt_data.get("categoria", "Geral"))
+    hashtags = html.escape(prompt_data.get("hashtags", ""))
+    categoria = html.escape(prompt_data.get("categoria", "Humor Cotidiano"))
     
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 
@@ -84,18 +86,24 @@ def build_caption(prompt_data: dict, video_filename: str) -> str:
         f"🎬 <b>{titulo}</b>",
     ]
 
-    if descricao:
-        caption_lines.append(f"\n📝 <i>{descricao}</i>")
-    elif prompt_visual:
-        resumo_prompt = prompt_visual[:250] + "..." if len(prompt_visual) > 250 else prompt_visual
-        caption_lines.append(f"\n🔍 <i>{resumo_prompt}</i>")
+    if legenda:
+        caption_lines.append(f"\n📱 <b>Legenda FB:</b> <i>{legenda}</i>")
+    elif conceito:
+        caption_lines.append(f"\n💡 <b>Conceito:</b> <i>{conceito}</i>")
+
+    if hashtags:
+        caption_lines.append(f"\n🏷️ <code>{hashtags}</code>")
+
+    if prompt_visual:
+        resumo_prompt = prompt_visual[:200] + "..." if len(prompt_visual) > 200 else prompt_visual
+        caption_lines.append(f"\n🎯 <b>Prompt Vídeo:</b> <i>{resumo_prompt}</i>")
 
     caption_lines.extend([
         f"\n📁 <b>Categoria:</b> {categoria}",
         f"⏱️ <b>Duração:</b> 12s | <b>Resolução:</b> 720p (9:16)",
         f"🤖 <b>Modelo:</b> Agnes Video 2.5 Flash / Pavo AI",
         f"📅 {timestamp}",
-        f"\n#pavoai #agnesai #videoia #shorts #reels"
+        f"\n#pavoai #humor #facebookreels #shorts"
     ])
 
     full_caption = "\n".join(caption_lines)
