@@ -13,10 +13,10 @@
     "create_endpoint": "/videos",
     "polling_endpoint": "/agnesapi",
     "model_name_poll": "agnes-video-2.5-flash",
-    "timeout_seconds": 600,
+    "timeout_seconds": 1200,
     "polling_interval_seconds": 15,
-    "max_retries": 10,
-    "retry_delay_seconds": 30
+    "max_retries": 8,
+    "retry_delay_seconds": 125
   },
   "openrouter": {
     "base_url": "https://openrouter.ai/api/v1",
