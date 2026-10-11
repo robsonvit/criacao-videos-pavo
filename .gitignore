@@ -9,6 +9,7 @@ __pycache__/
 .env
 .env.local
 *.key
+google_apps_script_acionador.js
 
 # Saídas e arquivos gerados
 output/
