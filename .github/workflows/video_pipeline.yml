@@ -111,7 +111,7 @@ jobs:
         id: create_vid
         env:
           AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
-          AGNES_BASE_URL: ${{ secrets.AGNES_BASE_URL }}
+          AGNES_BASE_URL: "https://apihub.agnes-ai.com/v1"
         run: |
           python scripts/create_video.py
         timeout-minutes: 25

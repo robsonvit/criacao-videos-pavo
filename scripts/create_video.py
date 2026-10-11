@@ -227,7 +227,8 @@ def main():
 
     settings = load_settings()
     api_key = os.getenv("AGNES_API_KEY")
-    base_url = os.getenv("AGNES_BASE_URL", settings.get("api", {}).get("base_url", "https://apihub.agnes-ai.com/v1"))
+    raw_base = os.getenv("AGNES_BASE_URL")
+    base_url = raw_base.strip() if raw_base and raw_base.strip() else settings.get("api", {}).get("base_url", "https://apihub.agnes-ai.com/v1")
 
     if not api_key:
         logger.error("AGNES_API_KEY não configurada no ambiente nem no .env!")
