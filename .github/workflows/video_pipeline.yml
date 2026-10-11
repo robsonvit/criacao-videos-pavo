@@ -114,7 +114,7 @@ jobs:
           AGNES_BASE_URL: "https://apihub.agnes-ai.com/v1"
         run: |
           python scripts/create_video.py
-        timeout-minutes: 25
+        timeout-minutes: 35
 
       - name: 📤 Salvar vídeo gerado como artefato
         uses: actions/upload-artifact@v4

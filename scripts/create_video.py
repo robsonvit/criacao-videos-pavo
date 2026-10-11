@@ -105,12 +105,13 @@ def submit_video_request(api_key: str, base_url: str, prompt_text: str, settings
                     return resp_text
 
         except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8")
+            err_body = e.read().decode("utf-8", errors="replace")
             logger.warning(f"[Tentativa {attempt}/{max_retries}] Erro HTTP {e.code}: {err_body}")
 
-            # 503 Fila cheia ou 429 Limite de taxa (1 requisição a cada 2 minutos no plano gratuito)
+            # 503 Fila cheia ou 429 Limite de taxa (1 RPM no plano gratuito)
             if e.code in (503, 429) or "queue_full" in err_body or "rate_limit" in err_body:
-                logger.info(f"⏳ Fila do servidor cheia ou limite gratuito de 2 minutos atingido. Aguardando {retry_delay}s antes de tentar novamente...")
+                motivo = "Rate Limit de 1 RPM" if (e.code == 429 or "rate_limit" in err_body) else "Fila da GPU Agnes AI cheia"
+                logger.info(f"⏳ {motivo}. Respeitando janela de segurança: aguardando {retry_delay}s antes da tentativa {attempt + 1}/{max_retries}...")
                 time.sleep(retry_delay)
                 continue
             else:
