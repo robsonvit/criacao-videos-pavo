@@ -1,0 +1,37 @@
+{
+  "video": {
+    "model": "agnes-video-2.5-flash",
+    "mode": "text",
+    "seconds": "12",
+    "size": "720P",
+    "aspect_ratio": "9:16",
+    "n": 1,
+    "format": "mp4"
+  },
+  "api": {
+    "base_url": "https://apihub.agnes-ai.com/v1",
+    "create_endpoint": "/videos",
+    "polling_endpoint": "/agnesapi",
+    "model_name_poll": "agnes-video-2.5-flash",
+    "timeout_seconds": 600,
+    "polling_interval_seconds": 15,
+    "max_retries": 10,
+    "retry_delay_seconds": 30
+  },
+  "openrouter": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "timeout_seconds": 60,
+    "max_retries": 3,
+    "retry_delay_seconds": 5
+  },
+  "telegram": {
+    "parse_mode": "HTML",
+    "send_caption": true,
+    "max_file_size_mb": 50
+  },
+  "output": {
+    "prompts_dir": "output/prompts",
+    "videos_dir": "output/videos",
+    "logs_dir": "output/logs"
+  }
+}

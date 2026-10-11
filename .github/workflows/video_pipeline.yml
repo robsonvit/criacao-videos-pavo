@@ -1,0 +1,192 @@
+name: 🎬 Pipeline de Vídeos - Agnes AI / Pavo AI
+
+on:
+  workflow_dispatch:
+    inputs:
+      custom_prompt:
+        description: "Prompt visual personalizado (opcional - deixe vazio para gerar via OpenRouter)"
+        required: false
+        default: ""
+      titulo:
+        description: "Título do vídeo (opcional)"
+        required: false
+        default: ""
+      notify_telegram:
+        description: "Enviar vídeo para o Telegram?"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+  # Descomente para agendar execuções automáticas:
+  # schedule:
+  #   - cron: "0 */4 * * *" # A cada 4 horas
+
+concurrency:
+  group: video-pipeline-pavo
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # ETAPA 1: Gerar Prompt Visual via OpenRouter (Modelos Free)
+  # ─────────────────────────────────────────────────────────────
+  generate-prompt:
+    name: 📝 Gerar Prompt Visual
+    runs-on: ubuntu-latest
+    outputs:
+      prompt_path: ${{ steps.gen.outputs.prompt_path }}
+      prompt_title: ${{ steps.gen.outputs.prompt_title }}
+      prompt_visual: ${{ steps.gen.outputs.prompt_visual }}
+
+    steps:
+      - name: ⬇️ Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 📦 Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: 📁 Criar diretórios de saída
+        run: mkdir -p output/prompts output/videos output/logs
+
+      - name: 📝 Executar geração do prompt
+        id: gen
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CUSTOM_PROMPT: ${{ github.event.inputs.custom_prompt }}
+          CUSTOM_TITULO: ${{ github.event.inputs.titulo }}
+        run: |
+          python scripts/generate_prompt.py
+        timeout-minutes: 10
+
+      - name: 📤 Salvar prompt como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-${{ github.run_number }}
+          path: output/prompts/
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────
+  # ETAPA 2: Gerar Vídeo 12s 720p 9:16 no Agnes AI / Pavo AI
+  # ─────────────────────────────────────────────────────────────
+  generate-video:
+    name: 🎥 Gerar Vídeo (Agnes/Pavo AI)
+    runs-on: ubuntu-latest
+    needs: generate-prompt
+    outputs:
+      video_path: ${{ steps.create_vid.outputs.video_path }}
+      video_id: ${{ steps.create_vid.outputs.video_id }}
+      video_url: ${{ steps.create_vid.outputs.video_url }}
+
+    steps:
+      - name: ⬇️ Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 📦 Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: 📁 Criar diretórios
+        run: mkdir -p output/prompts output/videos output/logs
+
+      - name: ⬇️ Baixar prompt gerado
+        uses: actions/download-artifact@v4
+        with:
+          name: prompt-${{ github.run_number }}
+          path: output/prompts/
+
+      - name: 🎥 Gerar vídeo na API do Agnes AI
+        id: create_vid
+        env:
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          AGNES_BASE_URL: ${{ secrets.AGNES_BASE_URL }}
+        run: |
+          python scripts/create_video.py
+        timeout-minutes: 25
+
+      - name: 📤 Salvar vídeo gerado como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-${{ github.run_number }}
+          path: output/videos/
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────
+  # ETAPA 3: Enviar Vídeo Final para o Telegram
+  # ─────────────────────────────────────────────────────────────
+  send-telegram:
+    name: 📱 Enviar para Telegram
+    runs-on: ubuntu-latest
+    needs: [generate-prompt, generate-video]
+    if: ${{ github.event.inputs.notify_telegram != 'false' }}
+
+    steps:
+      - name: ⬇️ Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 📦 Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: 📁 Criar diretórios
+        run: mkdir -p output/prompts output/videos output/logs
+
+      - name: ⬇️ Baixar prompt
+        uses: actions/download-artifact@v4
+        with:
+          name: prompt-${{ github.run_number }}
+          path: output/prompts/
+
+      - name: ⬇️ Baixar vídeo
+        uses: actions/download-artifact@v4
+        with:
+          name: video-${{ github.run_number }}
+          path: output/videos/
+
+      - name: 📱 Enviar vídeo para o Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python scripts/send_telegram.py
+        timeout-minutes: 10
+
+  # ─────────────────────────────────────────────────────────────
+  # ETAPA FINAL: Relatório do Pipeline
+  # ─────────────────────────────────────────────────────────────
+  pipeline-summary:
+    name: 📊 Resumo da Execução
+    runs-on: ubuntu-latest
+    needs: [generate-prompt, generate-video, send-telegram]
+    if: always()
+
+    steps:
+      - name: 📊 Publicar Step Summary
+        run: |
+          echo "## 🎬 Pipeline de Vídeo (Agnes/Pavo AI) - Resumo" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Etapa | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📝 1. Gerar Prompt Visual | ${{ needs.generate-prompt.result == 'success' && '✅ Concluído' || '❌ Falhou' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎥 2. Criar Vídeo 12s 9:16 | ${{ needs.generate-video.result == 'success' && '✅ Concluído' || needs.generate-video.result == 'skipped' && '⏭️ Pulado' || '❌ Falhou' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📱 3. Enviar Telegram | ${{ needs.send-telegram.result == 'success' && '✅ Concluído' || needs.send-telegram.result == 'skipped' && '⏭️ Pulado' || '❌ Falhou' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Execução:** #${{ github.run_number }} | **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Título:** ${{ needs.generate-prompt.outputs.prompt_title }}" >> $GITHUB_STEP_SUMMARY
